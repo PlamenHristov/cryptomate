@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "jest",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "clean": "rm -rf ./dist",
     "build": "npm run clean && npm run build:esm && npm run build:cjs",
     "build:esm": "tsc -p ./configs/tsconfig.esm.json && mv dist/esm/index.js dist/esm/index.mjs",
@@ -58,10 +59,25 @@
       "plugin:@typescript-eslint/recommended"
     ],
     "rules": {
-      "semi": ["error", "never"],
-      "indent": ["error", 2],
-      "quotes": [ "error", "double" ],
-      "no-multiple-empty-lines": [2, {"max": 99999, "maxEOF": 0}]
+      "semi": [
+        "error",
+        "never"
+      ],
+      "indent": [
+        "error",
+        2
+      ],
+      "quotes": [
+        "error",
+        "double"
+      ],
+      "no-multiple-empty-lines": [
+        2,
+        {
+          "max": 99999,
+          "maxEOF": 0
+        }
+      ]
     },
     "env": {
       "browser": true,
