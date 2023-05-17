@@ -49,30 +49,33 @@ export class EdDSA implements ISigner {
     }) as Buffer
   }
 
-  private import(keyData: string, key: Key)  {
+  private import(keyData: string | Buffer, format:crypto.KeyFormat, key: Key)  {
     this.checkPrivateKeyNotAlreadyImported()
 
     if (key == Key.privateKey) {
       this._privateKey = crypto.createPrivateKey({
         key: keyData,
-        format: "pem",
+        format,
+        type: "pkcs8",
       })
       this._publicKey = crypto.createPublicKey(this._privateKey)
+    } else {
+      this._publicKey =  crypto.createPublicKey({
+        key: keyData,
+        format,
+        type: "spki",
+      })
     }
 
-    crypto.createPublicKey({
-      key: keyData,
-      format: "pem",
-    })
   }
 
   public fromDER(der: string, key: Key = Key.privateKey): EdDSA {
-    this.import(this._encodePEM(der,key), key)
+    this.import(Buffer.from(der, "base64"),"der", key)
     return this
   }
 
   public fromPEM(pem: string, key: Key = Key.privateKey): EdDSA {
-    this.import(pem, key)
+    this.import(pem, "pem", key)
     return this
   }
 
@@ -167,6 +170,7 @@ export class EdDSA implements ISigner {
 
     return `-----BEGIN PUBLIC KEY-----\n${keyDer}\n-----END PUBLIC KEY-----`
   }
+
   private _encodeDER(hex: string, key): Buffer {
     const prefix = key == Key.privateKey ? this.privateKeyPrefix : this.publicKeyPrefix
     return Buffer.concat([

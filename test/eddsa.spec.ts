@@ -7,11 +7,12 @@ describe("EdDSA", () => {
   beforeEach(() => {
     eddsa = EdDSA.withCurve(Curve.ed25519)
   })
-  test("should throw an error for an unsupported curve", () => {
+
+  test("throws an error for an unsupported curve", () => {
     expect(() => new EdDSA("unsupportedCurve" as ED_CURVE)).toThrow("Unsupported curve: unsupportedCurve.")
   })
 
-  test("should sign and verify a message", () => {
+  test("sign and verify a message", () => {
     const msg = "Hello, World!"
     const signature = eddsa.genKeyPair().sign(msg)
     if (typeof signature === "object") {
@@ -58,32 +59,51 @@ describe("EdDSA", () => {
     expect(verifyResult).toBe(true)
   })
 
-
-  test("should convert a private key from and to PEM", () => {
+  test("converts a private key from and to PEM", () => {
     const eddsa = EdDSA.withCurve(Curve.ed25519).genKeyPair()
     const pemPrivateKey = eddsa.toPEM(Key.privateKey)
     expect(pemPrivateKey).toContain("BEGIN PRIVATE KEY")
     expect(pemPrivateKey).toContain("END PRIVATE KEY")
 
-    const importedKey = Eddsa.withCurve(Curve.ed25519).fromPEM(pemPrivateKey).privateKey
+    const importedKey = Eddsa.withCurve(Curve.ed25519).fromPEM(pemPrivateKey, Key.privateKey).privateKey
     expect(eddsa.privateKey).toEqual(importedKey)
   })
 
-  test("should convert a public key from and to DER", () => {
+  test("converts a public key from and to PEM", () => {
+    const eddsa = EdDSA.withCurve(Curve.ed25519).genKeyPair()
+    const pemPrivateKey = eddsa.toPEM(Key.publicKey)
+    expect(pemPrivateKey).toContain("BEGIN PUBLIC KEY")
+    expect(pemPrivateKey).toContain("END PUBLIC KEY")
+
+    const importedKey = Eddsa.withCurve(Curve.ed25519).fromPEM(pemPrivateKey, Key.publicKey).publicKey
+    expect(eddsa.publicKey).toEqual(importedKey)
+  })
+
+
+  test("converts a private key from and to DER", () => {
     const eddsa = EdDSA.withCurve(Curve.ed25519).genKeyPair()
     const derPrivateKey = eddsa.toDER(Key.privateKey)
     expect(derPrivateKey).not.toContain("BEGIN PRIVATE KEY")
     expect(derPrivateKey).not.toContain("END PRIVATE KEY")
 
-    expect(eddsa.privateKey).toEqual(Eddsa.withCurve(Curve.ed25519).fromDER(derPrivateKey).privateKey)
+    expect(eddsa.privateKey).toEqual(Eddsa.withCurve(Curve.ed25519).fromDER(derPrivateKey,Key.privateKey).privateKey)
   })
+  
+  test("converts a public key from and to DER", () => {
+    const eddsa = EdDSA.withCurve(Curve.ed25519).genKeyPair()
+    const derPrivateKey = eddsa.toDER(Key.publicKey)
+    expect(derPrivateKey).not.toContain("BEGIN PRIVATE KEY")
+    expect(derPrivateKey).not.toContain("END PRIVATE KEY")
 
-  test("should correctly set prefix based on curve", () => {
+    expect(eddsa.publicKey).toEqual(Eddsa.withCurve(Curve.ed25519).fromDER(derPrivateKey,Key.publicKey).publicKey)
+  })
+  
+  test("correctly sets prefix based on curve", () => {
     expect(eddsa.privateKeyPrefix).toBe(ED_CURVE_TO_DER_MARKER[Curve.ed25519][Key.privateKey])
     expect(eddsa.publicKeyPrefix).toBe(ED_CURVE_TO_DER_MARKER[Curve.ed25519][Key.publicKey])
   })
 
-  test("should throw an error when signing without a private key", () => {
+  test("throws an error when signing without a private key", () => {
     const msg = "Hello, World!"
     expect(() => eddsa.sign(msg)).toThrow("No private key set")
   })
