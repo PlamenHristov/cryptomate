@@ -1,7 +1,6 @@
 import * as crypto from "crypto"
 import {ED_CURVE, ED_CURVE_TO_DER_MARKER, Key} from "./constants"
 import {ISigner, SignatureEncoding, SignatureResponse} from "./types"
-import {KeyFormat} from "crypto";
 
 export class EdDSA implements ISigner {
   private curve: ED_CURVE
@@ -12,7 +11,7 @@ export class EdDSA implements ISigner {
 
   constructor(curve: ED_CURVE) {
     if(!curve) {
-      throw new Error(`Curve is required.`)
+      throw new Error("Curve is required.")
     }
     if (!Object.values(ED_CURVE).includes(curve)) {
       throw new Error(`Unsupported curve: ${curve}.`)
@@ -35,7 +34,7 @@ export class EdDSA implements ISigner {
   }
 
   public get publicKey(): string {
-    return this.export('der', Key.publicKey).toString("hex").replace(this.publicKeyPrefix, "")
+    return this.export("der", Key.publicKey).toString("hex").replace(this.publicKeyPrefix, "")
   }
   private export(format: crypto.KeyFormat, key: Key = Key.privateKey): Buffer {
     if (key == Key.privateKey) {
@@ -50,32 +49,30 @@ export class EdDSA implements ISigner {
     }) as Buffer
   }
 
-  private import(keyData: string, format: crypto.KeyFormat, key: Key)  {
+  private import(keyData: string, key: Key)  {
     this.checkPrivateKeyNotAlreadyImported()
 
     if (key == Key.privateKey) {
       this._privateKey = crypto.createPrivateKey({
         key: keyData,
-        format: format,
-        type: "pkcs8",
+        format: "pem",
       })
       this._publicKey = crypto.createPublicKey(this._privateKey)
     }
 
     crypto.createPublicKey({
       key: keyData,
-      format: format,
-      type: "spki",
+      format: "pem",
     })
   }
 
   public fromDER(der: string, key: Key = Key.privateKey): EdDSA {
-    this.import(der, 'der', key)
+    this.import(this._encodePEM(der,key), key)
     return this
   }
 
   public fromPEM(pem: string, key: Key = Key.privateKey): EdDSA {
-    this.import(pem, 'pem', key)
+    this.import(pem, key)
     return this
   }
 
@@ -88,14 +85,7 @@ export class EdDSA implements ISigner {
   public toPEM(key: Key = Key.privateKey): string {
     this.validateKeyExists(key)
 
-    if (key == Key.privateKey)
-      return `-----BEGIN PRIVATE KEY-----\n${this.toDER(
-        key
-      )}\n-----END PRIVATE KEY-----`
-
-    return `-----BEGIN PUBLIC KEY-----\n${this.toDER(
-      key
-    )}\n-----END PUBLIC KEY-----`
+    return this._encodePEM(this.toDER(key), key)
   }
 
   sign(
@@ -166,11 +156,17 @@ export class EdDSA implements ISigner {
 
   private validateKeyExists(key: Key) {
     if (key == Key.privateKey && !this._privateKey)
-      throw new Error("No private key key set")
+      throw new Error("No private key set")
     if (key == Key.publicKey && !this._publicKey)
       throw new Error("No public key set")
   }
 
+  private _encodePEM(keyDer: string, key): string {
+    if (key == Key.privateKey)
+      return `-----BEGIN PRIVATE KEY-----\n${keyDer}\n-----END PRIVATE KEY-----`
+
+    return `-----BEGIN PUBLIC KEY-----\n${keyDer}\n-----END PUBLIC KEY-----`
+  }
   private _encodeDER(hex: string, key): Buffer {
     const prefix = key == Key.privateKey ? this.privateKeyPrefix : this.publicKeyPrefix
     return Buffer.concat([
