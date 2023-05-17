@@ -58,7 +58,7 @@
       "plugin:@typescript-eslint/recommended"
     ],
     "rules": {
-      "semi": [ "error", "never"],
+      "semi": ["error", "never"],
       "indent": ["error", 2],
       "quotes": ["error", "double"],
       "no-multiple-empty-lines": [2, {"max": 99999, "maxEOF": 0}]
