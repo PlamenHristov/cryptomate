@@ -114,6 +114,9 @@ describe("ECDSA", () => {
 
   test("correctly imports hex encoded private key", () => {
     ecdsa.genKeyPair()
+
+    console.log(ecdsa.toDER().toString("hex"))
+
     const importedECDSA = ECDSA.withCurve(Curve.secp256k1).keyFromPrivate(ecdsa.privateKey)
     expect(importedECDSA.privateKey).toEqual(ecdsa.privateKey)
   })
