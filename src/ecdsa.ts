@@ -1,15 +1,12 @@
 import * as crypto from "crypto"
-
-import {BYTE_LENGTH_IN_HEX, EC_CURVE, EC_CURVE_TO_OID, Key} from "./constants"
-import {ISigner, SignatureEncoding, SignatureResponse, SignatureType} from "./types"
+import {EC_CURVE, EC_CURVE_TO_DER_MARKER, EC_CURVE_TO_OID, Key} from "./constants"
+import {ISigner, SignatureEncoding, SignatureResponse} from "./types"
 
 export class ECDSA implements ISigner {
   private readonly EC_PUBLIC_KEY_OID = "06072a8648ce3d0201"
-  private readonly ECDSA_OID_PREFIX = "02010030"
-  private readonly ECDSA_OID_SUFFIX = "020101"
-  private readonly PUBLIC_KEY_START_INDICATOR = "00"
-
   private readonly ecdh: crypto.ECDH
+  private readonly privateKeyPrefix: string
+  private readonly publicKeyPrefix: string
   private readonly oid: string
   private _privateKey: crypto.KeyObject
   private _publicKey: crypto.KeyObject
@@ -24,6 +21,8 @@ export class ECDSA implements ISigner {
 
     this.ecdh = crypto.createECDH(curve)
     this.oid = EC_CURVE_TO_OID[curve]
+    this.privateKeyPrefix = EC_CURVE_TO_DER_MARKER[curve][Key.privateKey][0]
+    this.publicKeyPrefix = EC_CURVE_TO_DER_MARKER[curve][Key.publicKey][0]
   }
 
   static withCurve(curve: EC_CURVE): ECDSA {
@@ -31,30 +30,17 @@ export class ECDSA implements ISigner {
   }
 
   public get privateKey(): string {
-    const pkcs8Hex = this._privateKey.export({
+    return this._privateKey.export({
       format: "der",
       type: "pkcs8",
-    }).toString("hex")
-    const privateKeyLengthSizeIndex = pkcs8Hex.indexOf(this.ECDSA_OID_SUFFIX) + this.ECDSA_OID_SUFFIX.length + 2
-    const privateKeyLengthSizeIndexEnd = privateKeyLengthSizeIndex + 2
-    const privateKeySize = pkcs8Hex.substring(privateKeyLengthSizeIndex, privateKeyLengthSizeIndexEnd)
-    const privateKeyEnd = privateKeyLengthSizeIndexEnd + this._decodeOidLength(privateKeySize) * BYTE_LENGTH_IN_HEX
-    return pkcs8Hex.substring(privateKeyLengthSizeIndexEnd, privateKeyEnd)
+    }).toString("hex").replace(this.privateKeyPrefix, "").substring(0, 64)
   }
 
   public get publicKey(): string {
-    const pkcs8Hex = this.export("der", Key.publicKey).toString("hex")
-    const pkLengthIndexStart = pkcs8Hex.indexOf(this.oid) + this.oid.length + BYTE_LENGTH_IN_HEX
-
-    let pkLengthIndexEnd = pkLengthIndexStart
-    while (pkcs8Hex.substring(pkLengthIndexEnd, pkLengthIndexEnd + BYTE_LENGTH_IN_HEX) != this.PUBLIC_KEY_START_INDICATOR) {
-      pkLengthIndexEnd += BYTE_LENGTH_IN_HEX
-    }
-
-    const publicKeySize = pkcs8Hex.substring(pkLengthIndexStart, pkLengthIndexEnd)
-    const publicKeyStart= pkLengthIndexEnd + this.PUBLIC_KEY_START_INDICATOR.length
-    const publicKeyEnd = publicKeyStart + (this._decodeOidLength(publicKeySize) * BYTE_LENGTH_IN_HEX)
-    return pkcs8Hex.substring(publicKeyStart, publicKeyEnd)
+    let publicKey = this.export("der", Key.publicKey).toString("hex")
+    publicKey = publicKey.replace(this.EC_PUBLIC_KEY_OID, "")
+    publicKey = publicKey.replace(this.oid, "")
+    return publicKey
   }
 
   private export(format: crypto.KeyFormat, key: Key = Key.privateKey): Buffer {
@@ -91,7 +77,7 @@ export class ECDSA implements ISigner {
   }
 
   public fromDER(der: string, key: Key = Key.privateKey): ECDSA {
-    this.import(Buffer.from(der, "hex"), "der", key)
+    this.import(Buffer.from(der, "base64"), "der", key)
     return this
   }
 
@@ -100,72 +86,62 @@ export class ECDSA implements ISigner {
     return this
   }
 
-  public toDER(key: Key = Key.privateKey): Buffer {
+  public toDER(key: Key = Key.privateKey): string {
     this.validateKeyExists(key)
-    if (key == Key.publicKey)
-      return this._publicKey.export({
-        format: "der",
-        type: "spki",
-      })
-
-    return this._privateKey.export({
-      format: "der",
-      type: "pkcs8",
-    })
+    const keyToEncode = key == Key.privateKey ? this.privateKey : this.publicKey
+    return this._encodeDER(keyToEncode, key).toString("base64")
   }
 
   public toPEM(key: Key = Key.privateKey): string {
     this.validateKeyExists(key)
 
-    return this._encodePEM(this.toDER(key).toString("base64"), key)
+    return this._encodePEM(this.toDER(key), key)
   }
 
-  sign<T extends SignatureEncoding>(msg: string, enc: T): SignatureResponse[T] {
+  sign(
+    msg: string | Buffer,
+    enc: SignatureEncoding = "object"
+  ): SignatureResponse {
     this.validateKeyExists(Key.privateKey)
     const signature = crypto.sign(
       null,
       Buffer.isBuffer(msg) ? msg : Buffer.from(msg, "hex"),
-      {
-        key: this._privateKey,
-        dsaEncoding: "ieee-p1363"
-      }
+      this._privateKey
     )
 
-    if (enc === "hex") return signature.toString("hex") as SignatureResponse[T]
-    if (enc === "buffer") return signature as SignatureResponse[T]
-    if (enc === "object")
+    const parsedSignature = this._DERtoRS(signature)
+    if (enc === "hex") return parsedSignature
+    if (enc === "buffer") return Buffer.from(parsedSignature)
+    if (enc === "object") {
       return {
-        r: signature.subarray(0, signature.length / 2).toString("hex"),
-        s: signature.subarray(signature.length / 2, signature.length).toString("hex")
-      } as SignatureResponse[T]
+        r: parsedSignature.substring(0, 64),
+        s: parsedSignature.substring(64, 128)
+      }
+    }
 
     throw new Error(`Unsupported encoding: ${enc}`)
   }
 
-  verify(msg: string, signature: SignatureType): boolean {
+  verify(msg: string, signature: SignatureResponse): boolean {
     this.validateKeyExists(Key.publicKey)
-    const castedSignature = this._castSignature(signature)
+    const derSignature = this._RStoDER(this._castSignature(signature))
 
     return crypto.verify(
       null,
       Buffer.from(msg, "hex"),
-      {
-        key: this._publicKey,
-        dsaEncoding: "ieee-p1363"
-      },
-      castedSignature
+      this._publicKey,
+      derSignature
     )
   }
 
-  private _castSignature(signature: SignatureType): Buffer {
-    if (Buffer.isBuffer(signature))
-      return signature
-
-    if (typeof signature === "object")
+  private _castSignature(signature: string | Buffer | { r: string; s: string }): string {
+    if (Buffer.isBuffer(signature)) {
+      signature = signature.toString("hex")
+    } else if (typeof signature === "object") {
       signature = signature.r + signature.s
-
+    }
     if (!this._publicKey) throw new Error("No public key set")
-    return Buffer.from(signature, "hex")
+    return signature
   }
 
   private validateKeyExists(key: Key) {
@@ -175,30 +151,73 @@ export class ECDSA implements ISigner {
       throw new Error("No public key set")
   }
 
-  private _encodePEM(keyDer: string, key: Key): string {
+  private _encodePEM(keyDer: string, key): string {
     if (key == Key.privateKey)
       return `-----BEGIN PRIVATE KEY-----\n${keyDer}\n-----END PRIVATE KEY-----`
 
     return `-----BEGIN PUBLIC KEY-----\n${keyDer}\n-----END PUBLIC KEY-----`
   }
 
-  private _encodeDER(hex: string, key: Key): Buffer {
-    return key == Key.privateKey ?
-      this._derEncodePrivateKey(hex) :
-      this._derEncodePublicKey(hex)
-  }
-
-  private _derEncodePublicKey(publicKeyHex: string): Buffer {
-    const paddedPublicKeyHex = `${this.PUBLIC_KEY_START_INDICATOR}${publicKeyHex}`
-    const encodedPublicKey  = `03${this._encodeOidLength(paddedPublicKeyHex)}${paddedPublicKeyHex}`
-    const keyMetadata = `${this.EC_PUBLIC_KEY_OID}${this.oid}`
-    const algorithmIdentifier = `30${this._encodeOidLength(keyMetadata)}${keyMetadata}`
-    const fullString = `${algorithmIdentifier}${encodedPublicKey}`
-    return Buffer.from("30" + this._encodeOidLength(fullString) + fullString, "hex")
+  private _encodeDER(hex: string, key): Buffer {
+    const prefix = key == Key.privateKey ? this.privateKeyPrefix : this.publicKeyPrefix
+    return Buffer.concat([
+      Buffer.from(prefix, "hex"),
+      Buffer.from(hex, "hex"),
+    ])
   }
 
   private checkPrivateKeyNotAlreadyImported(): void {
     if (this._privateKey) throw new Error("Private key already imported")
+  }
+
+  private _DERtoRS(signature: string | Buffer): string {
+    const sigBuf = !Buffer.isBuffer(signature) ? Buffer.from(signature, "hex") : signature
+    if (!Buffer.isBuffer(sigBuf)) {
+      throw new Error("Invalid input type. Expected Buffer or hex string")
+    }
+
+    if (sigBuf[0] !== 0x30 || sigBuf[2] !== 0x02) {
+      throw new Error("Invalid DER signature")
+    }
+    const DER_START_OFFSET = 4
+    const DER_R_OFFSET = 2
+    const lenR = sigBuf[3]
+    const startS = lenR + DER_START_OFFSET
+    const lenS = sigBuf[startS + 1]
+    const startR = startS + DER_R_OFFSET
+    const startSig = startR + lenS
+
+    if (startSig !== signature.length) {
+      throw new Error("Invalid DER signature length")
+    }
+    let r = sigBuf.subarray(DER_START_OFFSET, startS).toString("hex").padStart(64, "0")
+    let s = sigBuf.subarray(startR, startSig).toString("hex").padStart(64, "0")
+
+    // positive integers with most significant bit set must be prefixed with a zero in ASN.1 encoding
+    while (r.length > 64) {
+      r = r.slice(1)
+    }
+    while (s.length > 64) {
+      s = s.slice(1)
+    }
+    return `${r}${s}`
+  }
+
+  private _RStoDER(signature: string | Buffer): Buffer {
+    if (typeof signature !== "string" || signature.length !== 128) {
+      throw new Error("Invalid r||s signature format")
+    }
+
+    let r = Buffer.from(signature.slice(0, 64), "hex")
+    let s = Buffer.from(signature.slice(64, 128), "hex")
+
+    // Add leading zero to r and s if their highest bit is 1
+    if (r[0] >= 0x80) r = Buffer.concat([Buffer.from([0x00]), r])
+    if (s[0] >= 0x80) s = Buffer.concat([Buffer.from([0x00]), s])
+
+    const rDer = Buffer.concat([Buffer.from([0x02, r.length]), r])
+    const sDer = Buffer.concat([Buffer.from([0x02, s.length]), s])
+    return Buffer.concat([Buffer.from([0x30, rDer.length + sDer.length]), rDer, sDer])
   }
 
   keyFromPublic(publicKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): ECDSA {
@@ -229,7 +248,7 @@ export class ECDSA implements ISigner {
 
     const publicKey = this.ecdh.getPublicKey()
     this._publicKey = crypto.createPublicKey({
-      key: this._encodeDER(publicKey.toString("hex"), Key.publicKey),
+      key: publicKey,
       format: "der",
       type: "spki",
     })
@@ -244,42 +263,22 @@ export class ECDSA implements ISigner {
     return this
   }
 
-  private _decodeOidLength(hexString: string): number {
-    const firstByte = parseInt(hexString.slice(0, BYTE_LENGTH_IN_HEX), 16)
+  private _derEncodePrivateKey(privateKeyHex: string): string {
+    const publicKeyHex = `04${this.publicKey}`
+    const keyHexLength = (privateKeyHex.length / 2).toString(16).padStart(2, "0")
+    const publicKeyLength = (publicKeyHex.length / 2).toString(16).padStart(2, "0")
 
-    if (firstByte < 128)
-      return firstByte
+    const encodedPrivateKey = "04" + keyHexLength + privateKeyHex
+    const encodedPublicKey = "03" + publicKeyLength + "00" + publicKeyHex  // ASN.1 BitString
+    const encodedOid = "06" + (this.oid.length / 2).toString(16) + this.oid
 
-    const byteCount = firstByte - 128
-    const lengthBytes = hexString.slice(BYTE_LENGTH_IN_HEX, BYTE_LENGTH_IN_HEX * (byteCount + 1))
-    return parseInt(lengthBytes, 16)
-  }
+    const encodedAlgorithmIdentifier = this.EC_PUBLIC_KEY_OID + "a0" + encodedOid
 
-  private _encodeOidLength(hexString: string): string {
-    const BYTE_LENGTH_IN_HEX = 2
-    const length = hexString.length / BYTE_LENGTH_IN_HEX
-
-    if (length < 128)
-      return length.toString(16).padStart(BYTE_LENGTH_IN_HEX, "0")
-
-    let lengthBytes = length.toString(16)
-    const byteCount = Math.ceil(lengthBytes.length / BYTE_LENGTH_IN_HEX)
-    const initialByte = (128 + byteCount).toString(16)
-    lengthBytes = lengthBytes.padStart(byteCount * BYTE_LENGTH_IN_HEX, "0")
-    return initialByte + lengthBytes
-  }
-
-  private _derEncodePrivateKey(privateKeyHex: string): Buffer {
-    const publicKeyHex = `${this.PUBLIC_KEY_START_INDICATOR}${this.publicKey}`
-
-    const encodedPublicKey = `03${this._encodeOidLength(publicKeyHex)}${publicKeyHex}`
-    const encodedPrivateKey = `04${this._encodeOidLength(privateKeyHex)}${privateKeyHex}`
-    const privateKeyAndPublicKey = `${this.ECDSA_OID_SUFFIX}${encodedPrivateKey}A1${this._encodeOidLength(encodedPublicKey)}${encodedPublicKey}`
-    let privateKeyAndPublicKeyEncoding = `30${this._encodeOidLength(privateKeyAndPublicKey)}${privateKeyAndPublicKey}`
-    privateKeyAndPublicKeyEncoding = `04${this._encodeOidLength(privateKeyAndPublicKeyEncoding)}${privateKeyAndPublicKeyEncoding}`
-    const ecMetadata = `${this.EC_PUBLIC_KEY_OID}${this.oid}`
-    const fullEncoding = `${this.ECDSA_OID_PREFIX}${this._encodeOidLength(ecMetadata)}${ecMetadata}${privateKeyAndPublicKeyEncoding}`
-    const derPk = `30${this._encodeOidLength(fullEncoding)}${fullEncoding}`
-    return Buffer.from(derPk, "hex")
+    // ASN.1 DER encoding for PKCS#8 private key is:
+    // 0x30 + len(total) + version (020100) + AlgorithmIdentifier + Octet String + private key + Bit String + public key
+    const totalLength = (2 + 3 + encodedAlgorithmIdentifier.length / 2 + 2 + encodedPrivateKey.length / 2 + 2 + encodedPublicKey.length / 2).toString(16).padStart(2, "0")
+    return "30" + totalLength + "020100" + encodedAlgorithmIdentifier + encodedPrivateKey + encodedPublicKey
   }
 }
+
+export default ECDSA
