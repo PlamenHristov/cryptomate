@@ -1,6 +1,6 @@
 import * as crypto from "crypto"
-import {ED_CURVE, ED_CURVE_TO_DER_MARKER, Key} from "./constants"
-import {ISigner, SignatureEncoding, SignatureResponse} from "./types"
+import { ED_CURVE, ED_CURVE_TO_DER_MARKER, Key } from "./constants"
+import { ISigner, SignatureEncoding, SignatureResponse } from "./types"
 
 export class EdDSA implements ISigner {
   private curve: ED_CURVE
@@ -182,5 +182,3 @@ export class EdDSA implements ISigner {
     if (this._privateKey) throw new Error("Private key already imported")
   }
 }
-
-export default EdDSA
