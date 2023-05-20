@@ -23,7 +23,7 @@ describe("ECDSA", () => {
     const privateKeyDER = ecdsa.toDER(Key.privateKey)
 
     expect(privateKeyDER).toBeDefined()
-    expect(typeof privateKeyDER).toEqual("string")
+    expect(typeof privateKeyDER).toEqual("object")
   })
 
   test("exports private key to PEM format", () => {
@@ -110,5 +110,17 @@ describe("ECDSA", () => {
     const convertedPublicKeyDER = ecdsa2.toDER(Key.publicKey)
 
     expect(convertedPublicKeyDER).toEqual(originalPublicKeyDER)
+  })
+
+  test("correctly imports hex encoded private key", () => {
+    ecdsa.genKeyPair()
+    const importedECDSA = ECDSA.withCurve(Curve.secp256k1).keyFromPrivate(ecdsa.privateKey)
+    expect(importedECDSA.privateKey).toEqual(ecdsa.privateKey)
+  })
+
+  test("correctly imports hex encoded public key", () => {
+    ecdsa.genKeyPair()
+    const importedECDSA = ECDSA.withCurve(Curve.secp256k1).keyFromPublic(ecdsa.publicKey)
+    expect(importedECDSA.publicKey).toEqual(ecdsa.publicKey)
   })
 })

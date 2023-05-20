@@ -1,6 +1,6 @@
 import * as crypto from "crypto"
 import { ED_CURVE, ED_CURVE_TO_DER_MARKER, Key } from "./constants"
-import {ISigner, SignatureEncoding, SignatureResponse, SignatureType} from "./types"
+import { ISigner, SignatureEncoding, SignatureResponse } from "./types"
 
 export class EdDSA implements ISigner {
   private curve: ED_CURVE
@@ -69,8 +69,8 @@ export class EdDSA implements ISigner {
 
   }
 
-  public fromDER(der: string|Buffer, key: Key = Key.privateKey): EdDSA {
-    this.import(Buffer.isBuffer(der) ? der : Buffer.from(der, "hex"),"der", key)
+  public fromDER(der: string, key: Key = Key.privateKey): EdDSA {
+    this.import(Buffer.from(der, "base64"),"der", key)
     return this
   }
 
@@ -79,10 +79,10 @@ export class EdDSA implements ISigner {
     return this
   }
 
-  public toDER(key: Key = Key.privateKey): Buffer {
+  public toDER(key: Key = Key.privateKey): string {
     this.validateKeyExists(key)
     const keyToEncode = key == Key.privateKey ? this.privateKey : this.publicKey
-    return this._encodeDER(keyToEncode, key)
+    return this._encodeDER(keyToEncode, key).toString("base64")
   }
 
   public toPEM(key: Key = Key.privateKey): string {
@@ -91,22 +91,25 @@ export class EdDSA implements ISigner {
     return this._encodePEM(this.toDER(key), key)
   }
 
-  sign<T extends SignatureEncoding>(msg: string | Buffer, enc: T): SignatureResponse[T] {
+  sign(
+    msg: string | Buffer,
+    enc: SignatureEncoding = "object"
+  ): SignatureResponse {
     this.validateKeyExists(Key.privateKey)
 
     const signature = crypto.sign(
       null,
       Buffer.isBuffer(msg) ? msg : Buffer.from(msg, "hex"),
-      { key:this._privateKey , dsaEncoding: "ieee-p1363"}
+      this._privateKey
     )
-    if (enc === "hex") return signature.toString("hex") as SignatureResponse[T]
-    if (enc === "buffer") return signature as SignatureResponse[T]
+    if (enc === "hex") return signature.toString("hex")
+    if (enc === "buffer") return signature
 
     const [r, s] = signature.toString("hex").match(/.{1,64}/g) as string[]
-    return {r, s} as SignatureResponse[T]
+    return {r, s}
   }
 
-  verify(msg: string, signature: SignatureType): boolean {
+  verify(msg: string, signature: SignatureResponse): boolean {
     this.validateKeyExists(Key.publicKey)
 
     if (Buffer.isBuffer(signature)) {
@@ -161,14 +164,14 @@ export class EdDSA implements ISigner {
       throw new Error("No public key set")
   }
 
-  private _encodePEM(keyDer: Buffer, key: Key): string {
+  private _encodePEM(keyDer: string, key): string {
     if (key == Key.privateKey)
-      return `-----BEGIN PRIVATE KEY-----\n${keyDer.toString("base64")}\n-----END PRIVATE KEY-----`
+      return `-----BEGIN PRIVATE KEY-----\n${keyDer}\n-----END PRIVATE KEY-----`
 
-    return `-----BEGIN PUBLIC KEY-----\n${keyDer.toString("base64")}\n-----END PUBLIC KEY-----`
+    return `-----BEGIN PUBLIC KEY-----\n${keyDer}\n-----END PUBLIC KEY-----`
   }
 
-  private _encodeDER(hex: string, key: Key): Buffer {
+  private _encodeDER(hex: string, key): Buffer {
     const prefix = key == Key.privateKey ? this.privateKeyPrefix : this.publicKeyPrefix
     return Buffer.concat([
       Buffer.from(prefix, "hex"),
