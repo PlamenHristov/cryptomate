@@ -69,8 +69,8 @@ export class EdDSA implements ISigner {
 
   }
 
-  public fromDER(der: string, key: Key = Key.privateKey): EdDSA {
-    this.import(Buffer.from(der, "base64"),"der", key)
+  public fromDER(der: string|Buffer, key: Key = Key.privateKey): EdDSA {
+    this.import(Buffer.isBuffer(der) ? der : Buffer.from(der, "hex"),"der", key)
     return this
   }
 
@@ -79,10 +79,10 @@ export class EdDSA implements ISigner {
     return this
   }
 
-  public toDER(key: Key = Key.privateKey): string {
+  public toDER(key: Key = Key.privateKey): Buffer {
     this.validateKeyExists(key)
     const keyToEncode = key == Key.privateKey ? this.privateKey : this.publicKey
-    return this._encodeDER(keyToEncode, key).toString("base64")
+    return this._encodeDER(keyToEncode, key)
   }
 
   public toPEM(key: Key = Key.privateKey): string {
@@ -164,11 +164,11 @@ export class EdDSA implements ISigner {
       throw new Error("No public key set")
   }
 
-  private _encodePEM(keyDer: string, key): string {
+  private _encodePEM(keyDer: Buffer, key): string {
     if (key == Key.privateKey)
-      return `-----BEGIN PRIVATE KEY-----\n${keyDer}\n-----END PRIVATE KEY-----`
+      return `-----BEGIN PRIVATE KEY-----\n${keyDer.toString("base64")}\n-----END PRIVATE KEY-----`
 
-    return `-----BEGIN PUBLIC KEY-----\n${keyDer}\n-----END PUBLIC KEY-----`
+    return `-----BEGIN PUBLIC KEY-----\n${keyDer.toString("base64")}\n-----END PUBLIC KEY-----`
   }
 
   private _encodeDER(hex: string, key): Buffer {
