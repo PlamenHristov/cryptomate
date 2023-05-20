@@ -6,8 +6,8 @@ export class EdDSA implements ISigner {
   private curve: ED_CURVE
   private _privateKey: crypto.KeyObject
   private _publicKey: crypto.KeyObject
-  private readonly privateKeyPrefix
-  private readonly publicKeyPrefix
+  private readonly privateKeyPrefix: string
+  private readonly publicKeyPrefix: string
 
   constructor(curve: ED_CURVE) {
     if(!curve) {
@@ -127,7 +127,7 @@ export class EdDSA implements ISigner {
     )
   }
 
-  keyFromPrivate(privateKey: string | Buffer, enc: crypto.BinaryToTextEncoding): EdDSA {
+  keyFromPrivate(privateKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): EdDSA {
     const serializedKey = Buffer.isBuffer(privateKey) ? privateKey : Buffer.from(privateKey, enc)
     this._privateKey = crypto.createPrivateKey({
       key: this._encodeDER(serializedKey.toString("hex"), Key.privateKey),
