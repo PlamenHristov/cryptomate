@@ -84,7 +84,7 @@ describe("EdDSA", () => {
     expect(derPrivateKey).not.toContain("BEGIN PRIVATE KEY")
     expect(derPrivateKey).not.toContain("END PRIVATE KEY")
 
-    expect(eddsa.privateKey).toEqual(EdDSA.withCurve(Curve.ed25519).fromDER(derPrivateKey, Key.privateKey).privateKey)
+    expect(eddsa.privateKey).toEqual(EdDSA.withCurve(Curve.ed25519).fromDER(derPrivateKey,Key.privateKey).privateKey)
   })
   
   test("converts a public key from and to DER", () => {
