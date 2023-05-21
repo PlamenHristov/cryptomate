@@ -60,7 +60,7 @@ describe("ECDSA", () => {
       expect(ecdsa.verify(message, signature)).toBeTruthy()
     })
 
-    test.skip(`${curve} verify works with public key only`, () => {
+    test(`${curve} verify works with public key only`, () => {
       ecdsa.genKeyPair()
 
       const message = "test message"
