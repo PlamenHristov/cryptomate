@@ -44,7 +44,7 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
   }
 
   public get publicKey(): string {
-    const pkcs8Hex = this.export("der", Key.publicKey).toString("hex")
+    const pkcs8Hex = this._export("der", Key.publicKey).toString("hex")
     const pkLengthIndexStart = pkcs8Hex.lastIndexOf(this.oid) + this.oid.length + BYTE_LENGTH_IN_HEX
 
     let pkLengthIndexEnd = pkLengthIndexStart
@@ -58,17 +58,31 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
     return pkcs8Hex.substring(publicKeyStart, publicKeyEnd)
   }
 
-  private export(format: crypto.KeyFormat, key: Key = Key.privateKey): Buffer {
+  private _export(format: crypto.KeyFormat, key: Key = Key.privateKey): Buffer {
     if (key == Key.privateKey) {
       return this._privateKey.export({
         format: format as any,
         type: "pkcs8",
       }) as Buffer
     }
+
     return this._publicKey.export({
       format: format as any,
       type: "spki",
     }) as Buffer
+  }
+
+  private export(format: crypto.KeyFormat, key: Key = Key.privateKey): Buffer | string {
+    // There is a bug in nodejs >16.x where importing the public key directly the DER encoding
+    // concatenates the OID twice instead of adding the public key prefix + oid.
+    if(!this._privateKey){
+      if(format === "der")
+        return this._encodeDER(this.publicKey, key)
+
+      return this._encodePEM(this._encodeDER(this.publicKey, key), key)
+    }
+
+    return this._export(format, key)
   }
 
   private import(keyData: string | Buffer, format: crypto.KeyFormat, key: Key) {
@@ -103,22 +117,12 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
 
   public toDER(key: Key = Key.privateKey): Buffer {
     this._validateKeyExists(key)
-    if (key == Key.privateKey)
-      return this._privateKey.export({
-        format: "der",
-        type: "pkcs8",
-      })
-
-    return this._publicKey.export({
-      format: "der",
-      type: "spki",
-    })
+    return this.export("der", key) as Buffer
   }
 
   public toPEM(key: Key = Key.privateKey): string {
     this._validateKeyExists(key)
-
-    return this._encodePEM(this.toDER(key).toString("base64"), key)
+    return this.export("pem", key) as string
   }
 
   sign<T extends SignatureEncoding>(msg: string, enc?: T): SignatureResponse[T] {
@@ -217,11 +221,18 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
       throw new Error("No public key set")
   }
 
-  private _encodePEM(keyDer: string, key: Key): string {
-    if (key == Key.privateKey)
-      return `-----BEGIN PRIVATE KEY-----\n${keyDer}\n-----END PRIVATE KEY-----`
+  private _encodePEM(keyDer: Buffer, key: Key): string {
+    let b64Der = keyDer.toString("base64")
+    let encodedPEM = ""
+    while (b64Der.length) {
+      encodedPEM += b64Der.substring(0, 64) + "\n"
+      b64Der = b64Der.substring(64)
+    }
 
-    return `-----BEGIN PUBLIC KEY-----\n${keyDer}\n-----END PUBLIC KEY-----`
+    if (key == Key.privateKey)
+      return `-----BEGIN PRIVATE KEY-----\n${encodedPEM}-----END PRIVATE KEY-----\n`
+
+    return `-----BEGIN PUBLIC KEY-----\n${encodedPEM}-----END PUBLIC KEY-----\n`
   }
 
   private _encodeDER(hex: string, key: Key): Buffer {

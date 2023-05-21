@@ -105,7 +105,7 @@ describe("ECDSA", () => {
 
       const ecdsa2 = ECDSA.withCurve(curve).fromPEM(ecdsa.toPEM(Key.publicKey), Key.publicKey)
 
-      expect(ecdsa2.toDER(Key.publicKey).toString('hex')).toEqual(ecdsa.toDER(Key.publicKey).toString('hex'))
+      expect(ecdsa2.toDER(Key.publicKey).toString("hex")).toEqual(ecdsa.toDER(Key.publicKey).toString("hex"))
     })
 
     test(`${curve} correctly imports hex encoded private key`, () => {
