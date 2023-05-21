@@ -1,7 +1,7 @@
 import * as crypto from "crypto"
-import {ED_CURVE_TO_DER_MARKER} from "./constants"
-import {ED_CURVE, Key} from "./enums"
-import {IKey, ISigner, SignatureEncoding, SignatureResponse, SignatureType} from "./types"
+import { ED_CURVE_TO_DER_MARKER } from "./constants"
+import { ED_CURVE, Key } from "./enums"
+import { IKey, ISigner, SignatureEncoding, SignatureResponse, SignatureType } from "./types"
 
 export class EdDSA implements ISigner, IKey<EdDSA> {
   private curve: ED_CURVE
