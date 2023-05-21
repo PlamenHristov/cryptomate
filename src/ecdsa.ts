@@ -2,7 +2,15 @@ import * as crypto from "crypto"
 
 import {BYTE_LENGTH_IN_HEX, EC_CURVE_TO_OID} from "./constants"
 import {EC_CURVE, Key} from "./enums"
-import { EncodingResponse, IKey, ISigner, KeyEncoding, SignatureEncoding, SignatureResponse, SignatureType } from "./types"
+import {
+  EncodingResponse,
+  IKey,
+  ISigner,
+  KeyEncoding,
+  SignatureEncoding,
+  SignatureResponse,
+  SignatureType
+} from "./types"
 
 export class ECDSA implements ISigner, IKey<ECDSA> {
   private readonly EC_PUBLIC_KEY_OID = "06072a8648ce3d0201"
@@ -127,7 +135,7 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
       null,
       Buffer.isBuffer(msg) ? msg : Buffer.from(msg, "hex"),
       {
-        key: this._privateKey,
+        key: this.toPEM(Key.privateKey),
         dsaEncoding: "ieee-p1363"
       }
     )
@@ -149,7 +157,7 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
       null,
       Buffer.from(msg, "hex"),
       {
-        key: this._publicKey,
+        key: this.toPEM(Key.publicKey),
         dsaEncoding: "ieee-p1363"
       },
       castedSignature
