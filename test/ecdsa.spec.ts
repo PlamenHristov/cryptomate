@@ -60,18 +60,19 @@ describe("ECDSA", () => {
     })
 
     test(`${curve} throws error when private key is not set for signing`, () => {
+      const ecdsa = new ECDSA(curve)
       const message = "test message"
 
       expect(() => ecdsa.sign(message)).toThrow("No private key set")
     })
 
     test(`${curve} throws error when public key is not set for verification`, () => {
+      const ecdsa = new ECDSA(curve)
       const message = "test message"
       const signature = "test signature"
 
       expect(() => ecdsa.verify(message, signature)).toThrow("No public key set")
     })
-
 
     test(`${curve} converts correctly from PEM to DER and back to PEM for private key`, () => {
       ecdsa.genKeyPair()
@@ -112,7 +113,7 @@ describe("ECDSA", () => {
       const ecdsa2 = ECDSA.withCurve(curve).fromPEM(ecdsa.toPEM(Key.publicKey), Key.publicKey)
       const convertedPublicKeyDER = ecdsa2.toDER(Key.publicKey)
 
-      expect(convertedPublicKeyDER).toEqual(originalPublicKeyDER)
+      expect(convertedPublicKeyDER.toString('hex')).toEqual(originalPublicKeyDER.toString('hex'))
     })
 
     test(`${curve} correctly imports hex encoded private key`, () => {

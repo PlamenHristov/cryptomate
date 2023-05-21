@@ -45,7 +45,7 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
 
   public get publicKey(): string {
     const pkcs8Hex = this.export("der", Key.publicKey).toString("hex")
-    const pkLengthIndexStart = pkcs8Hex.indexOf(this.oid) + this.oid.length + BYTE_LENGTH_IN_HEX
+    const pkLengthIndexStart = pkcs8Hex.lastIndexOf(this.oid) + this.oid.length + BYTE_LENGTH_IN_HEX
 
     let pkLengthIndexEnd = pkLengthIndexStart
     while (pkcs8Hex.substring(pkLengthIndexEnd, pkLengthIndexEnd + BYTE_LENGTH_IN_HEX) != this.PUBLIC_KEY_START_INDICATOR) {
@@ -103,15 +103,15 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
 
   public toDER(key: Key = Key.privateKey): Buffer {
     this._validateKeyExists(key)
-    if (key == Key.publicKey)
-      return this._publicKey.export({
+    if (key == Key.privateKey)
+      return this._privateKey.export({
         format: "der",
-        type: "spki",
+        type: "pkcs8",
       })
 
-    return this._privateKey.export({
+    return this._publicKey.export({
       format: "der",
-      type: "pkcs8",
+      type: "spki",
     })
   }
 
