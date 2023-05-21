@@ -33,6 +33,10 @@
     "type": "git",
     "url": "git+https://github.com/PlamenHristov/cryptomate.git"
   },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  },
   "keywords": [
     "nodejs",
     "crypto",
