@@ -1,8 +1,11 @@
 # @blocksoft/cryptomate
 
-This Node.js module provides a user-friendly interface for performing cryptographic operations using Elliptic Curve
-Digital Signature Algorithm (ECDSA) and Edwards-curve Digital Signature Algorithm (EdDSA). The library uses the native
-crypto module in Node.js to deliver these functionalities.
+Ergonomic, zero-dependency crypto module wrapper for ECDSA and EdDSA signatures.
+
+[![Pull Request Checks](https://github.com/PlamenHristov/cryptomate/actions/workflows/pr.yml/badge.svg?branch=main&event=release)](https://github.com/PlamenHristov/cryptomate/actions/workflows/pr.yml)
+[![Coverage Status](https://coveralls.io/repos/github/PlamenHristov/cryptomate/badge.svg?branch=main)](https://coveralls.io/github/PlamenHristov/cryptomate?branch=main)
+[![Known Vulnerabilities](https://snyk.io/test/github/PlamenHristov/cryptomate/badge.svg?targetFile=package.json)](https://snyk.io/test/github/PlamenHristov/cryptomate?targetFile=package.json)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Key features of the module include:
 
