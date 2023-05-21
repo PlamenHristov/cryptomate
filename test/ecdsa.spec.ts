@@ -1,129 +1,137 @@
-import {ECDSA, Curve, Key, EC_CURVE} from "../src"
+import {ECDSA, Key, EC_CURVE} from "../src"
+import * as crypto from "crypto"
 
 describe("ECDSA", () => {
-  let ecdsa
 
-  beforeEach(() => {
-    ecdsa = new ECDSA(Curve.secp256k1)
+  test("all EC curves without ignored ones are supported", () => {
+    // missing OID in nodejs
+    const ignoredCurves = ["Oakley-EC2N-3", "Oakley-EC2N-4"]
+    expect(crypto.getCurves().filter(curve => !ignoredCurves.includes(curve))).toEqual(Object.values(EC_CURVE))
   })
 
-  test("throws error for unsupported curve", () => {
-    expect(() => new ECDSA("unsupportedCurve" as EC_CURVE)).toThrow("Unsupported curve: unsupportedCurve.")
-  })
+  Object.values(EC_CURVE).forEach((curve: EC_CURVE) => {
+    let ecdsa
 
-  test(" generate key pair", () => {
-    ecdsa.genKeyPair()
+    beforeEach(() => {
+      ecdsa = new ECDSA(curve)
+    })
 
-    expect(ecdsa.privateKey).toBeDefined()
-    expect(ecdsa.publicKey).toBeDefined()
-  })
+    test(`${curve} throws error for unsupported curve`, () => {
+      expect(() => new ECDSA("unsupportedCurve" as EC_CURVE)).toThrow("Unsupported curve: unsupportedCurve.")
+    })
 
-  test("exports private key to DER format", () => {
-    ecdsa.genKeyPair()
-    const privateKeyDER = ecdsa.toDER(Key.privateKey)
+    test(`${curve} generate key pair`, () => {
+      ecdsa.genKeyPair()
 
-    expect(privateKeyDER).toBeDefined()
-    expect(typeof privateKeyDER).toEqual("object")
-  })
+      expect(ecdsa.privateKey).toBeDefined()
+      expect(ecdsa.publicKey).toBeDefined()
+    })
 
-  test("exports private key to PEM format", () => {
-    ecdsa.genKeyPair()
-    const privateKeyPEM = ecdsa.toPEM(Key.privateKey)
+    test(`${curve} exports private key to DER format`, () => {
+      ecdsa.genKeyPair()
+      const privateKeyDER = ecdsa.toDER(Key.privateKey)
 
-    expect(privateKeyPEM).toBeDefined()
-    expect(typeof privateKeyPEM).toEqual("string")
-  })
+      expect(privateKeyDER).toBeDefined()
+      expect(typeof privateKeyDER).toEqual("object")
+    })
 
-  test(" sign message", () => {
-    ecdsa.genKeyPair()
-    const message = "test message"
-    const signature = ecdsa.sign(message)
+    test(`${curve} exports private key to PEM format`, () => {
+      ecdsa.genKeyPair()
+      const privateKeyPEM = ecdsa.toPEM(Key.privateKey)
 
-    expect(signature).toBeDefined()
-  })
+      expect(privateKeyPEM).toBeDefined()
+      expect(typeof privateKeyPEM).toEqual("string")
+    })
 
-  test("verifies signature", () => {
-    ecdsa.genKeyPair()
-    const message = "test message"
-    const signature = ecdsa.sign(message)
+    test(`${curve}  sign message`, () => {
+      ecdsa.genKeyPair()
+      const message = "test message"
+      const signature = ecdsa.sign(message)
 
-    expect(ecdsa.verify(message, signature)).toBeTruthy()
-  })
+      expect(signature).toBeDefined()
+    })
 
-  test("throws error when private key is not set for signing", () => {
-    const message = "test message"
+    test(`${curve} verifies signature`, () => {
+      ecdsa.genKeyPair()
+      const message = "test message"
+      const signature = ecdsa.sign(message)
 
-    expect(() => ecdsa.sign(message)).toThrow("No private key set")
-  })
+      expect(ecdsa.verify(message, signature)).toBeTruthy()
+    })
 
-  test("throws error when public key is not set for verification", () => {
-    const message = "test message"
-    const signature = "test signature" // TODO: replace with actual signature
+    test(`${curve} throws error when private key is not set for signing`, () => {
+      const message = "test message"
 
-    expect(() => ecdsa.verify(message, signature)).toThrow("No public key set")
-  })
+      expect(() => ecdsa.sign(message)).toThrow("No private key set")
+    })
+
+    test(`${curve} throws error when public key is not set for verification`, () => {
+      const message = "test message"
+      const signature = "test signature"
+
+      expect(() => ecdsa.verify(message, signature)).toThrow("No public key set")
+    })
 
 
-  test("converts correctly from PEM to DER and back to PEM for private key", () => {
-    ecdsa.genKeyPair()
-    const originalPrivateKeyPEM = ecdsa.toPEM(Key.privateKey)
+    test(`${curve} converts correctly from PEM to DER and back to PEM for private key`, () => {
+      ecdsa.genKeyPair()
+      const originalPrivateKeyPEM = ecdsa.toPEM(Key.privateKey)
 
-    const privateKeyDER = ecdsa.toDER(Key.privateKey)
-    const ecdsa2 = ECDSA.withCurve(Curve.secp256k1)
-    ecdsa2.fromDER(privateKeyDER, Key.privateKey)
-    const convertedPrivateKeyPEM = ecdsa2.toPEM(Key.privateKey)
+      const privateKeyDER = ecdsa.toDER(Key.privateKey)
+      const ecdsa2 = ECDSA.withCurve(curve)
+      ecdsa2.fromDER(privateKeyDER, Key.privateKey)
+      const convertedPrivateKeyPEM = ecdsa2.toPEM(Key.privateKey)
 
-    expect(convertedPrivateKeyPEM).toEqual(originalPrivateKeyPEM)
-  })
+      expect(convertedPrivateKeyPEM).toEqual(originalPrivateKeyPEM)
+    })
 
-  test("converts correctly from DER to PEM and back to DER for private key", () => {
-    ecdsa.genKeyPair()
-    const originalPrivateKeyDER = ecdsa.toDER(Key.privateKey)
+    test(`${curve} converts correctly from DER to PEM and back to DER for private key`, () => {
+      ecdsa.genKeyPair()
+      const originalPrivateKeyDER = ecdsa.toDER(Key.privateKey)
 
-    const privateKeyPEM = ecdsa.toPEM(Key.privateKey)
-    const ecdsa2 = ECDSA.withCurve(Curve.secp256k1)
-    ecdsa2.fromPEM(privateKeyPEM, Key.privateKey)
-    const convertedPrivateKeyDER = ecdsa2.toDER(Key.privateKey)
+      const privateKeyPEM = ecdsa.toPEM(Key.privateKey)
+      const ecdsa2 = ECDSA.withCurve(curve)
+      ecdsa2.fromPEM(privateKeyPEM, Key.privateKey)
+      const convertedPrivateKeyDER = ecdsa2.toDER(Key.privateKey)
 
-    expect(convertedPrivateKeyDER).toEqual(originalPrivateKeyDER)
-  })
+      expect(convertedPrivateKeyDER).toEqual(originalPrivateKeyDER)
+    })
 
-  test("converts correctly from PEM to DER and back to PEM for public key", () => {
-    ecdsa.genKeyPair()
-    const originalPublicKeyPEM = ecdsa.toPEM(Key.publicKey)
+    test(`${curve} converts correctly from PEM to DER and back to PEM for public key`, () => {
+      ecdsa.genKeyPair()
+      const originalPublicKeyPEM = ecdsa.toPEM(Key.publicKey)
 
-    const publicKeyDER = ecdsa.toDER(Key.publicKey)
-    const ecdsa2 = ECDSA.withCurve(Curve.secp256k1)
-    ecdsa2.fromDER(publicKeyDER, Key.publicKey)
-    const convertedPublicKeyPEM = ecdsa2.toPEM(Key.publicKey)
+      const publicKeyDER = ecdsa.toDER(Key.publicKey)
+      const ecdsa2 = ECDSA.withCurve(curve)
+      ecdsa2.fromDER(publicKeyDER, Key.publicKey)
+      const convertedPublicKeyPEM = ecdsa2.toPEM(Key.publicKey)
 
-    expect(convertedPublicKeyPEM).toEqual(originalPublicKeyPEM)
-  })
+      expect(convertedPublicKeyPEM).toEqual(originalPublicKeyPEM)
+    })
 
-  test("converts correctly from DER to PEM and back to DER for public key", () => {
-    ecdsa.genKeyPair()
-    const originalPublicKeyDER = ecdsa.toDER(Key.publicKey)
+    test(`${curve} converts correctly from DER to PEM and back to DER for public key`, () => {
+      ecdsa.genKeyPair()
+      const originalPublicKeyDER = ecdsa.toDER(Key.publicKey)
 
-    const publicKeyPEM = ecdsa.toPEM(Key.publicKey)
-    const ecdsa2 = ECDSA.withCurve(Curve.secp256k1)
-    ecdsa2.fromPEM(publicKeyPEM, Key.publicKey)
-    const convertedPublicKeyDER = ecdsa2.toDER(Key.publicKey)
+      const publicKeyPEM = ecdsa.toPEM(Key.publicKey)
+      const ecdsa2 = ECDSA.withCurve(curve)
+      ecdsa2.fromPEM(publicKeyPEM, Key.publicKey)
+      const convertedPublicKeyDER = ecdsa2.toDER(Key.publicKey)
 
-    expect(convertedPublicKeyDER).toEqual(originalPublicKeyDER)
-  })
+      expect(convertedPublicKeyDER).toEqual(originalPublicKeyDER)
+    })
 
-  test("correctly imports hex encoded private key", () => {
-    ecdsa.genKeyPair()
+    test(`${curve} correctly imports hex encoded private key`, () => {
+      ecdsa.genKeyPair()
 
-    console.log(ecdsa.toDER().toString("hex"))
+      const importedECDSA = ECDSA.withCurve(curve).keyFromPrivate(ecdsa.privateKey)
+      expect(importedECDSA.privateKey).toEqual(ecdsa.privateKey)
+    })
 
-    const importedECDSA = ECDSA.withCurve(Curve.secp256k1).keyFromPrivate(ecdsa.privateKey)
-    expect(importedECDSA.privateKey).toEqual(ecdsa.privateKey)
-  })
-
-  test("correctly imports hex encoded public key", () => {
-    ecdsa.genKeyPair()
-    const importedECDSA = ECDSA.withCurve(Curve.secp256k1).keyFromPublic(ecdsa.publicKey)
-    expect(importedECDSA.publicKey).toEqual(ecdsa.publicKey)
+    test(`${curve} correctly imports hex encoded public key`, () => {
+      ecdsa.genKeyPair()
+      const importedECDSA = ECDSA.withCurve(curve).keyFromPublic(ecdsa.publicKey)
+      expect(importedECDSA.publicKey).toEqual(ecdsa.publicKey)
+    })
   })
 })
