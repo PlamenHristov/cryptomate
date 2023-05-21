@@ -100,10 +100,7 @@ describe("ECDSA", () => {
     test(`${curve} converts correctly from PEM to DER and back to PEM for public key`, () => {
       ecdsa.genKeyPair()
       const originalPublicKeyPEM = ecdsa.toPEM(Key.publicKey)
-
-      const publicKeyDER = ecdsa.toDER(Key.publicKey)
-      const ecdsa2 = ECDSA.withCurve(curve)
-      ecdsa2.fromDER(publicKeyDER, Key.publicKey)
+      const ecdsa2 = ECDSA.withCurve(curve).fromDER(ecdsa.toDER(Key.publicKey), Key.publicKey)
       const convertedPublicKeyPEM = ecdsa2.toPEM(Key.publicKey)
 
       expect(convertedPublicKeyPEM).toEqual(originalPublicKeyPEM)
@@ -112,10 +109,7 @@ describe("ECDSA", () => {
     test(`${curve} converts correctly from DER to PEM and back to DER for public key`, () => {
       ecdsa.genKeyPair()
       const originalPublicKeyDER = ecdsa.toDER(Key.publicKey)
-
-      const publicKeyPEM = ecdsa.toPEM(Key.publicKey)
-      const ecdsa2 = ECDSA.withCurve(curve)
-      ecdsa2.fromPEM(publicKeyPEM, Key.publicKey)
+      const ecdsa2 = ECDSA.withCurve(curve).fromPEM(ecdsa.toPEM(Key.publicKey), Key.publicKey)
       const convertedPublicKeyDER = ecdsa2.toDER(Key.publicKey)
 
       expect(convertedPublicKeyDER).toEqual(originalPublicKeyDER)
