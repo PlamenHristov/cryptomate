@@ -35,7 +35,6 @@ export class ECDSA implements ISigner {
       format: "der",
       type: "pkcs8",
     }).toString("hex")
-    // start of the version number + length of type identifier for the private key
     const privateKeyLengthSizeIndex = pkcs8Hex.indexOf(this.ECDSA_OID_SUFFIX) + this.ECDSA_OID_SUFFIX.length + 2
     const privateKeyLengthSizeIndexEnd = privateKeyLengthSizeIndex + 2
     const privateKeySize = pkcs8Hex.substring(privateKeyLengthSizeIndex, privateKeyLengthSizeIndexEnd)
