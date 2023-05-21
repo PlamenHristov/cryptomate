@@ -1,9 +1,10 @@
 import * as crypto from "crypto"
 
-import {BYTE_LENGTH_IN_HEX, EC_CURVE, EC_CURVE_TO_OID, Key} from "./constants"
-import {ISigner, SignatureEncoding, SignatureResponse, SignatureType} from "./types"
+import {BYTE_LENGTH_IN_HEX, EC_CURVE_TO_OID} from "./constants"
+import {EC_CURVE, Key} from "./enums"
+import {IKey, ISigner, SignatureEncoding, SignatureResponse, SignatureType} from "./types"
 
-export class ECDSA implements ISigner {
+export class ECDSA implements ISigner, IKey<ECDSA> {
   private readonly EC_PUBLIC_KEY_OID = "06072a8648ce3d0201"
   private readonly ECDSA_OID_PREFIX = "02010030"
   private readonly ECDSA_OID_SUFFIX = "020101"
@@ -90,8 +91,8 @@ export class ECDSA implements ISigner {
 
   }
 
-  public fromDER(der: string, key: Key = Key.privateKey): ECDSA {
-    this.import(Buffer.from(der, "hex"), "der", key)
+  public fromDER(der: string | Buffer, key: Key = Key.privateKey): ECDSA {
+    this.import(Buffer.isBuffer(der) ? der : Buffer.from(der, "hex"),"der", key)
     return this
   }
 
@@ -101,7 +102,7 @@ export class ECDSA implements ISigner {
   }
 
   public toDER(key: Key = Key.privateKey): Buffer {
-    this.validateKeyExists(key)
+    this._validateKeyExists(key)
     if (key == Key.publicKey)
       return this._publicKey.export({
         format: "der",
@@ -115,13 +116,13 @@ export class ECDSA implements ISigner {
   }
 
   public toPEM(key: Key = Key.privateKey): string {
-    this.validateKeyExists(key)
+    this._validateKeyExists(key)
 
     return this._encodePEM(this.toDER(key).toString("base64"), key)
   }
 
-  sign<T extends SignatureEncoding>(msg: string, enc: T): SignatureResponse[T] {
-    this.validateKeyExists(Key.privateKey)
+  sign<T extends SignatureEncoding>(msg: string, enc?: T): SignatureResponse[T] {
+    this._validateKeyExists(Key.privateKey)
     const signature = crypto.sign(
       null,
       Buffer.isBuffer(msg) ? msg : Buffer.from(msg, "hex"),
@@ -133,17 +134,15 @@ export class ECDSA implements ISigner {
 
     if (enc === "hex") return signature.toString("hex") as SignatureResponse[T]
     if (enc === "buffer") return signature as SignatureResponse[T]
-    if (enc === "object")
-      return {
-        r: signature.subarray(0, signature.length / 2).toString("hex"),
-        s: signature.subarray(signature.length / 2, signature.length).toString("hex")
-      } as SignatureResponse[T]
 
-    throw new Error(`Unsupported encoding: ${enc}`)
+    return {
+      r: signature.subarray(0, signature.length / 2).toString("hex"),
+      s: signature.subarray(signature.length / 2, signature.length).toString("hex")
+    } as SignatureResponse[T]
   }
 
   verify(msg: string, signature: SignatureType): boolean {
-    this.validateKeyExists(Key.publicKey)
+    this._validateKeyExists(Key.publicKey)
     const castedSignature = this._castSignature(signature)
 
     return crypto.verify(
@@ -156,51 +155,7 @@ export class ECDSA implements ISigner {
       castedSignature
     )
   }
-
-  private _castSignature(signature: SignatureType): Buffer {
-    if (Buffer.isBuffer(signature))
-      return signature
-
-    if (typeof signature === "object")
-      signature = signature.r + signature.s
-
-    if (!this._publicKey) throw new Error("No public key set")
-    return Buffer.from(signature, "hex")
-  }
-
-  private validateKeyExists(key: Key) {
-    if (key == Key.privateKey && !this._privateKey)
-      throw new Error("No private key set")
-    if (key == Key.publicKey && !this._publicKey)
-      throw new Error("No public key set")
-  }
-
-  private _encodePEM(keyDer: string, key: Key): string {
-    if (key == Key.privateKey)
-      return `-----BEGIN PRIVATE KEY-----\n${keyDer}\n-----END PRIVATE KEY-----`
-
-    return `-----BEGIN PUBLIC KEY-----\n${keyDer}\n-----END PUBLIC KEY-----`
-  }
-
-  private _encodeDER(hex: string, key: Key): Buffer {
-    return key == Key.privateKey ?
-      this._derEncodePrivateKey(hex) :
-      this._derEncodePublicKey(hex)
-  }
-
-  private _derEncodePublicKey(publicKeyHex: string): Buffer {
-    const paddedPublicKeyHex = `${this.PUBLIC_KEY_START_INDICATOR}${publicKeyHex}`
-    const encodedPublicKey  = `03${this._encodeOidLength(paddedPublicKeyHex)}${paddedPublicKeyHex}`
-    const keyMetadata = `${this.EC_PUBLIC_KEY_OID}${this.oid}`
-    const algorithmIdentifier = `30${this._encodeOidLength(keyMetadata)}${keyMetadata}`
-    const fullString = `${algorithmIdentifier}${encodedPublicKey}`
-    return Buffer.from("30" + this._encodeOidLength(fullString) + fullString, "hex")
-  }
-
-  private checkPrivateKeyNotAlreadyImported(): void {
-    if (this._privateKey) throw new Error("Private key already imported")
-  }
-
+  
   keyFromPublic(publicKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): ECDSA {
     if (this._privateKey) throw new Error("Cannot import public key when private key is set")
 
@@ -242,6 +197,50 @@ export class ECDSA implements ISigner {
     })
 
     return this
+  }
+  
+  private _castSignature(signature: SignatureType): Buffer {
+    if (Buffer.isBuffer(signature))
+      return signature
+
+    if (typeof signature === "object")
+      signature = signature.r + signature.s
+
+    if (!this._publicKey) throw new Error("No public key set")
+    return Buffer.from(signature, "hex")
+  }
+
+  private _validateKeyExists(key: Key) {
+    if (key == Key.privateKey && !this._privateKey)
+      throw new Error("No private key set")
+    if (key == Key.publicKey && !this._publicKey)
+      throw new Error("No public key set")
+  }
+
+  private _encodePEM(keyDer: string, key: Key): string {
+    if (key == Key.privateKey)
+      return `-----BEGIN PRIVATE KEY-----\n${keyDer}\n-----END PRIVATE KEY-----`
+
+    return `-----BEGIN PUBLIC KEY-----\n${keyDer}\n-----END PUBLIC KEY-----`
+  }
+
+  private _encodeDER(hex: string, key: Key): Buffer {
+    return key == Key.privateKey ?
+      this._derEncodePrivateKey(hex) :
+      this._derEncodePublicKey(hex)
+  }
+
+  private _derEncodePublicKey(publicKeyHex: string): Buffer {
+    const paddedPublicKeyHex = `${this.PUBLIC_KEY_START_INDICATOR}${publicKeyHex}`
+    const encodedPublicKey  = `03${this._encodeOidLength(paddedPublicKeyHex)}${paddedPublicKeyHex}`
+    const keyMetadata = `${this.EC_PUBLIC_KEY_OID}${this.oid}`
+    const algorithmIdentifier = `30${this._encodeOidLength(keyMetadata)}${keyMetadata}`
+    const fullString = `${algorithmIdentifier}${encodedPublicKey}`
+    return Buffer.from("30" + this._encodeOidLength(fullString) + fullString, "hex")
+  }
+
+  private checkPrivateKeyNotAlreadyImported(): void {
+    if (this._privateKey) throw new Error("Private key already imported")
   }
 
   private _decodeOidLength(hexString: string): number {

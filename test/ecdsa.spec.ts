@@ -1,5 +1,5 @@
-import {ECDSA, Key, EC_CURVE} from "../src"
 import * as crypto from "crypto"
+import {ECDSA,Key,EC_CURVE} from "../src"
 
 describe("ECDSA", () => {
 
