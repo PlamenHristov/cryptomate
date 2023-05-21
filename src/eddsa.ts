@@ -100,7 +100,7 @@ export class EdDSA implements ISigner {
     const signature = crypto.sign(
       null,
       Buffer.isBuffer(msg) ? msg : Buffer.from(msg, "hex"),
-      this._privateKey
+      { key:this._privateKey , dsaEncoding: "ieee-p1363"}
     )
     if (enc === "hex") return signature.toString("hex")
     if (enc === "buffer") return signature
