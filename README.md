@@ -1,4 +1,4 @@
-# @blocksoft/cryptomate
+# cryptomate
 
 Ergonomic, zero-dependency crypto module wrapper for ECDSA and EdDSA signatures.
 
@@ -16,10 +16,10 @@ Key features of the module include:
 
 ## Installation
 
-To install `@blocksoft/cryptomate`, use the following npm command:
+To install `cryptomate`, use the following npm command:
 
 ```bash
-npm i --save @blocksoft/cryptomate
+npm i --save cryptomate
 ```
 
 ## Quick Start
@@ -27,7 +27,7 @@ npm i --save @blocksoft/cryptomate
 Here is an example demonstrating the use of the ECDSA functionality provided by this module:
 
 ```javascript
-const {ECDSA, EC_CURVE, Key, SignatureEncoding} = require('@blocksoft/cryptomate');
+const {ECDSA, EC_CURVE, Key, SignatureEncoding} = require('cryptomate');
 
 // Generate an ECDSA key pair.
 const ecdsa = ECDSA.withCurve(EC_CURVE.secp256k1).genKeyPair();
