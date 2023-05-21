@@ -1,6 +1,6 @@
 import * as crypto from "crypto"
 import { ED_CURVE, ED_CURVE_TO_DER_MARKER, Key } from "./constants"
-import { ISigner, SignatureEncoding, SignatureResponse } from "./types"
+import {ISigner, SignatureEncoding, SignatureResponse, SignatureType} from "./types"
 
 export class EdDSA implements ISigner {
   private curve: ED_CURVE
@@ -91,10 +91,7 @@ export class EdDSA implements ISigner {
     return this._encodePEM(this.toDER(key), key)
   }
 
-  sign(
-    msg: string | Buffer,
-    enc: SignatureEncoding = "object"
-  ): SignatureResponse {
+  sign<T extends SignatureEncoding>(msg: string | Buffer, enc: T): SignatureResponse[T] {
     this.validateKeyExists(Key.privateKey)
 
     const signature = crypto.sign(
@@ -102,14 +99,14 @@ export class EdDSA implements ISigner {
       Buffer.isBuffer(msg) ? msg : Buffer.from(msg, "hex"),
       { key:this._privateKey , dsaEncoding: "ieee-p1363"}
     )
-    if (enc === "hex") return signature.toString("hex")
-    if (enc === "buffer") return signature
+    if (enc === "hex") return signature.toString("hex") as SignatureResponse[T]
+    if (enc === "buffer") return signature as SignatureResponse[T]
 
     const [r, s] = signature.toString("hex").match(/.{1,64}/g) as string[]
-    return {r, s}
+    return {r, s} as SignatureResponse[T]
   }
 
-  verify(msg: string, signature: SignatureResponse): boolean {
+  verify(msg: string, signature: SignatureType): boolean {
     this.validateKeyExists(Key.publicKey)
 
     if (Buffer.isBuffer(signature)) {
@@ -164,14 +161,14 @@ export class EdDSA implements ISigner {
       throw new Error("No public key set")
   }
 
-  private _encodePEM(keyDer: Buffer, key): string {
+  private _encodePEM(keyDer: Buffer, key: Key): string {
     if (key == Key.privateKey)
       return `-----BEGIN PRIVATE KEY-----\n${keyDer.toString("base64")}\n-----END PRIVATE KEY-----`
 
     return `-----BEGIN PUBLIC KEY-----\n${keyDer.toString("base64")}\n-----END PUBLIC KEY-----`
   }
 
-  private _encodeDER(hex: string, key): Buffer {
+  private _encodeDER(hex: string, key: Key): Buffer {
     const prefix = key == Key.privateKey ? this.privateKeyPrefix : this.publicKeyPrefix
     return Buffer.concat([
       Buffer.from(prefix, "hex"),

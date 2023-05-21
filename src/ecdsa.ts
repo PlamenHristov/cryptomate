@@ -1,7 +1,7 @@
 import * as crypto from "crypto"
 
 import {BYTE_LENGTH_IN_HEX, EC_CURVE, EC_CURVE_TO_OID, Key} from "./constants"
-import {ISigner, SignatureEncoding, SignatureResponse} from "./types"
+import {ISigner, SignatureEncoding, SignatureResponse, SignatureType} from "./types"
 
 export class ECDSA implements ISigner {
   private readonly EC_PUBLIC_KEY_OID = "06072a8648ce3d0201"
@@ -121,10 +121,7 @@ export class ECDSA implements ISigner {
     return this._encodePEM(this.toDER(key).toString("base64"), key)
   }
 
-  sign(
-    msg: string | Buffer,
-    enc: SignatureEncoding = "object"
-  ): SignatureResponse {
+  sign<T extends SignatureEncoding>(msg: string, enc: T): SignatureResponse[T] {
     this.validateKeyExists(Key.privateKey)
     const signature = crypto.sign(
       null,
@@ -135,18 +132,18 @@ export class ECDSA implements ISigner {
       }
     )
 
-    if (enc === "hex") return signature.toString("hex")
-    if (enc === "buffer") return signature
+    if (enc === "hex") return signature.toString("hex") as SignatureResponse[T]
+    if (enc === "buffer") return signature as SignatureResponse[T]
     if (enc === "object")
       return {
         r: signature.subarray(0, signature.length / 2).toString("hex"),
         s: signature.subarray(signature.length / 2, signature.length).toString("hex")
-      }
+      } as SignatureResponse[T]
 
     throw new Error(`Unsupported encoding: ${enc}`)
   }
 
-  verify(msg: string, signature: SignatureResponse): boolean {
+  verify(msg: string, signature: SignatureType): boolean {
     this.validateKeyExists(Key.publicKey)
     const castedSignature = this._castSignature(signature)
 
@@ -161,7 +158,7 @@ export class ECDSA implements ISigner {
     )
   }
 
-  private _castSignature(signature: string | Buffer | { r: string; s: string }): Buffer {
+  private _castSignature(signature: SignatureType): Buffer {
     if (Buffer.isBuffer(signature))
       return signature
 
@@ -179,14 +176,14 @@ export class ECDSA implements ISigner {
       throw new Error("No public key set")
   }
 
-  private _encodePEM(keyDer: string, key): string {
+  private _encodePEM(keyDer: string, key: Key): string {
     if (key == Key.privateKey)
       return `-----BEGIN PRIVATE KEY-----\n${keyDer}\n-----END PRIVATE KEY-----`
 
     return `-----BEGIN PUBLIC KEY-----\n${keyDer}\n-----END PUBLIC KEY-----`
   }
 
-  private _encodeDER(hex: string, key): Buffer {
+  private _encodeDER(hex: string, key: Key): Buffer {
     return key == Key.privateKey ?
       this._derEncodePrivateKey(hex) :
       this._derEncodePublicKey(hex)
