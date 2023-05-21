@@ -1,8 +1,8 @@
 import * as crypto from "crypto"
 
-import { BYTE_LENGTH_IN_HEX, EC_CURVE_TO_OID } from "./constants"
-import { EC_CURVE, Key } from "./enums"
-import { IKey, ISigner, SignatureEncoding, SignatureResponse, SignatureType } from "./types"
+import {BYTE_LENGTH_IN_HEX, EC_CURVE_TO_OID} from "./constants"
+import {EC_CURVE, Key} from "./enums"
+import { EncodingResponse, IKey, ISigner, KeyEncoding, SignatureEncoding, SignatureResponse, SignatureType } from "./types"
 
 export class ECDSA implements ISigner, IKey<ECDSA> {
   private readonly EC_PUBLIC_KEY_OID = "06072a8648ce3d0201"
@@ -32,10 +32,7 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
   }
 
   public get privateKey(): string {
-    const pkcs8Hex = this._privateKey.export({
-      format: "der",
-      type: "pkcs8",
-    }).toString("hex")
+    const pkcs8Hex = this.export("der", Key.privateKey).toString("hex")
     const privateKeyLengthSizeIndex = pkcs8Hex.indexOf(this.ECDSA_OID_SUFFIX) + this.ECDSA_OID_SUFFIX.length + 2
     const privateKeyLengthSizeIndexEnd = privateKeyLengthSizeIndex + 2
     const privateKeySize = pkcs8Hex.substring(privateKeyLengthSizeIndex, privateKeyLengthSizeIndexEnd)
@@ -53,7 +50,7 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
     }
 
     const publicKeySize = pkcs8Hex.substring(pkLengthIndexStart, pkLengthIndexEnd)
-    const publicKeyStart= pkLengthIndexEnd + this.PUBLIC_KEY_START_INDICATOR.length
+    const publicKeyStart = pkLengthIndexEnd + this.PUBLIC_KEY_START_INDICATOR.length
     const publicKeyEnd = publicKeyStart + (this._decodeOidLength(publicKeySize) * BYTE_LENGTH_IN_HEX)
     return pkcs8Hex.substring(publicKeyStart, publicKeyEnd)
   }
@@ -72,41 +69,40 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
     }) as Buffer
   }
 
-  private export(format: crypto.KeyFormat, key: Key = Key.privateKey): Buffer | string {
+  private export<T extends KeyEncoding>(format: T, key: Key = Key.privateKey): EncodingResponse[T] {
     // There is a bug in nodejs >16.x where importing the public key directly the DER encoding
     // concatenates the OID twice instead of adding the public key prefix + oid.
-    if(!this._privateKey){
-      if(format === "der")
-        return this._encodeDER(this.publicKey, key)
+    if (!this._privateKey) {
+      if (format === "der")
+        return this._encodeDER(this.publicKey, key) as EncodingResponse[T]
 
-      return this._encodePEM(this._encodeDER(this.publicKey, key), key)
+      return this._encodePEM(this._encodeDER(this.publicKey, key), key) as EncodingResponse[T]
     }
 
-    return this._export(format, key)
+    return this._export(format, key) as EncodingResponse[T]
   }
 
-  private import(keyData: string | Buffer, format: crypto.KeyFormat, key: Key) {
+  private import(keyData: string | Buffer, format: "pem", key: Key) {
     this.checkPrivateKeyNotAlreadyImported()
 
     if (key == Key.privateKey) {
       this._privateKey = crypto.createPrivateKey({
         key: keyData,
         format,
-        type: "pkcs8",
       })
       this._publicKey = crypto.createPublicKey(this._privateKey)
     } else {
       this._publicKey = crypto.createPublicKey({
         key: keyData,
         format,
-        type: "spki",
       })
     }
 
   }
 
   public fromDER(der: string | Buffer, key: Key = Key.privateKey): ECDSA {
-    this.import(Buffer.isBuffer(der) ? der : Buffer.from(der, "hex"),"der", key)
+    const derFormat = Buffer.isBuffer(der) ? der : Buffer.from(der, "hex")
+    this.import(this._encodePEM(derFormat, key), "pem", key)
     return this
   }
 
@@ -117,12 +113,12 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
 
   public toDER(key: Key = Key.privateKey): Buffer {
     this._validateKeyExists(key)
-    return this.export("der", key) as Buffer
+    return this.export("der", key)
   }
 
   public toPEM(key: Key = Key.privateKey): string {
     this._validateKeyExists(key)
-    return this.export("pem", key) as string
+    return this.export("pem", key)
   }
 
   sign<T extends SignatureEncoding>(msg: string, enc?: T): SignatureResponse[T] {
@@ -159,22 +155,18 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
       castedSignature
     )
   }
-  
+
   keyFromPublic(publicKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): ECDSA {
     if (this._privateKey) throw new Error("Cannot import public key when private key is set")
 
     const serializedKey = Buffer.isBuffer(publicKey) ? publicKey : Buffer.from(publicKey, enc)
-    this._publicKey = crypto.createPublicKey({
-      key: this._encodeDER(serializedKey.toString("hex"), Key.publicKey),
-      format: "der",
-      type: "spki",
-    })
+    this.import(this._encodePEM(this._encodeDER(serializedKey.toString("hex"), Key.publicKey), Key.publicKey), "pem", Key.publicKey)
     return this
   }
 
   genKeyPair(): ECDSA {
     const keypair = crypto.generateKeyPairSync("ec", {
-      namedCurve: this.curve
+      namedCurve: this.curve,
     })
     this._privateKey = keypair.privateKey
     this._publicKey = keypair.publicKey
@@ -187,22 +179,21 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
     this.ecdh.setPrivateKey(serializedKey)
 
     const publicKey = this.ecdh.getPublicKey()
+    const pkPEM = this._encodePEM(this._encodeDER(publicKey.toString("hex"), Key.publicKey), Key.publicKey)
     this._publicKey = crypto.createPublicKey({
-      key: this._encodeDER(publicKey.toString("hex"), Key.publicKey),
-      format: "der",
-      type: "spki",
+      key: pkPEM,
+      format: "pem",
     })
 
-    const derPrivateKey = this._derEncodePrivateKey(serializedKey.toString("hex"))
+    const skPEM = this._encodePEM(this._encodeDER(privateKey.toString("hex"), Key.privateKey), Key.privateKey)
     this._privateKey = crypto.createPrivateKey({
-      key: derPrivateKey,
-      format: "der",
-      type: "pkcs8",
+      key: skPEM,
+      format: "pem",
     })
 
     return this
   }
-  
+
   private _castSignature(signature: SignatureType): Buffer {
     if (Buffer.isBuffer(signature))
       return signature
@@ -243,7 +234,7 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
 
   private _derEncodePublicKey(publicKeyHex: string): Buffer {
     const paddedPublicKeyHex = `${this.PUBLIC_KEY_START_INDICATOR}${publicKeyHex}`
-    const encodedPublicKey  = `03${this._encodeOidLength(paddedPublicKeyHex)}${paddedPublicKeyHex}`
+    const encodedPublicKey = `03${this._encodeOidLength(paddedPublicKeyHex)}${paddedPublicKeyHex}`
     const keyMetadata = `${this.EC_PUBLIC_KEY_OID}${this.oid}`
     const algorithmIdentifier = `30${this._encodeOidLength(keyMetadata)}${keyMetadata}`
     const fullString = `${algorithmIdentifier}${encodedPublicKey}`
