@@ -60,6 +60,15 @@ describe("ECDSA", () => {
       expect(ecdsa.verify(message, signature)).toBeTruthy()
     })
 
+    test(`${curve} verify works with public key only`, () => {
+      ecdsa.genKeyPair()
+      const message = "test message"
+      const signature = ecdsa.sign(message)
+
+      expect(ECDSA.withCurve(curve).keyFromPublic(ecdsa.publicKey).verify(message, signature)).toBeTruthy()
+    })
+
+
     test(`${curve} throws error when private key is not set for signing`, () => {
       const ecdsa = new ECDSA(curve)
       const message = "test message"
