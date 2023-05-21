@@ -1,4 +1,5 @@
 export * from "./ecdsa"
 export * from "./eddsa"
 export * from "./constants"
+export * from "./enums"
 export * from "./types"

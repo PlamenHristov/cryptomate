@@ -8,7 +8,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "jest",
+    "test": "jest --coverage",
     "clean": "rm -rf ./dist",
     "build": "npm run clean && npm run build:esm && npm run build:cjs",
     "build:esm": "tsc -p ./configs/tsconfig.esm.json && mv dist/esm/index.js dist/esm/index.mjs",
@@ -32,6 +32,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/PlamenHristov/cryptomate.git"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
   },
   "keywords": [
     "nodejs",
@@ -58,10 +62,25 @@
       "plugin:@typescript-eslint/recommended"
     ],
     "rules": {
-      "semi": ["error", "never"],
-      "indent": ["error", 2],
-      "quotes": ["error", "double"],
-      "no-multiple-empty-lines": [2, {"max": 99999, "maxEOF": 0}]
+      "semi": [
+        "error",
+        "never"
+      ],
+      "indent": [
+        "error",
+        2
+      ],
+      "quotes": [
+        "error",
+        "double"
+      ],
+      "no-multiple-empty-lines": [
+        2,
+        {
+          "max": 99999,
+          "maxEOF": 0
+        }
+      ]
     },
     "env": {
       "browser": true,
@@ -72,5 +91,8 @@
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/PlamenHristov/cryptomate/issues"
+  },
+  "volta": {
+    "node": "20.2.0"
   }
 }

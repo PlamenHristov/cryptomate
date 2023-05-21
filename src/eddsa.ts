@@ -1,8 +1,9 @@
 import * as crypto from "crypto"
-import { ED_CURVE, ED_CURVE_TO_DER_MARKER, Key } from "./constants"
-import {ISigner, SignatureEncoding, SignatureResponse, SignatureType} from "./types"
+import { ED_CURVE_TO_DER_MARKER } from "./constants"
+import { ED_CURVE, Key } from "./enums"
+import { IKey, ISigner, SignatureEncoding, SignatureResponse, SignatureType } from "./types"
 
-export class EdDSA implements ISigner {
+export class EdDSA implements ISigner, IKey<EdDSA> {
   private curve: ED_CURVE
   private _privateKey: crypto.KeyObject
   private _publicKey: crypto.KeyObject
@@ -69,7 +70,7 @@ export class EdDSA implements ISigner {
 
   }
 
-  public fromDER(der: string|Buffer, key: Key = Key.privateKey): EdDSA {
+  public fromDER(der: string | Buffer, key: Key = Key.privateKey): EdDSA {
     this.import(Buffer.isBuffer(der) ? der : Buffer.from(der, "hex"),"der", key)
     return this
   }
@@ -91,7 +92,7 @@ export class EdDSA implements ISigner {
     return this._encodePEM(this.toDER(key), key)
   }
 
-  sign<T extends SignatureEncoding>(msg: string | Buffer, enc: T): SignatureResponse[T] {
+  sign<T extends SignatureEncoding>(msg: string | Buffer, enc?: T): SignatureResponse[T] {
     this.validateKeyExists(Key.privateKey)
 
     const signature = crypto.sign(
@@ -124,7 +125,7 @@ export class EdDSA implements ISigner {
     )
   }
 
-  keyFromPrivate(privateKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): EdDSA {
+  public keyFromPrivate(privateKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): EdDSA {
     const serializedKey = Buffer.isBuffer(privateKey) ? privateKey : Buffer.from(privateKey, enc)
     this._privateKey = crypto.createPrivateKey({
       key: this._encodeDER(serializedKey.toString("hex"), Key.privateKey),
@@ -135,7 +136,7 @@ export class EdDSA implements ISigner {
     return this
   }
 
-  keyFromPublic(publicKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): EdDSA {
+  public keyFromPublic(publicKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): EdDSA {
     if (this._privateKey) throw new Error("Cannot import public key when private key is set")
 
     const serializedKey = Buffer.isBuffer(publicKey) ? publicKey : Buffer.from(publicKey, enc)
@@ -147,7 +148,7 @@ export class EdDSA implements ISigner {
     return this
   }
 
-  genKeyPair(): EdDSA {
+  public genKeyPair(): EdDSA {
     const keypair = crypto.generateKeyPairSync(this.curve as any)
     this._privateKey = keypair.privateKey
     this._publicKey = keypair.publicKey
