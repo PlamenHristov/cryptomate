@@ -1,5 +1,5 @@
 {
-  "name": "@blocksoft-ltd/cryptomate",
+  "name": "cryptomate",
   "version": "1.0.0",
   "description": "NodeJS crypto module wrapper for humans",
   "main": "index.js",
