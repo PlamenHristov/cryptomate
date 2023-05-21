@@ -46,4 +46,4 @@ jobs:
       uses: coverallsapp/github-action@v2
       with:
         parallel-finished: true
-        carryforward: "run-1,run-2"
+        carryforward: "run-ubuntu-latest-16.x,run-ubuntu-latest-18.x,run-ubuntu-latest-20.x"
