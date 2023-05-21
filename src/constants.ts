@@ -92,6 +92,7 @@ export enum EC_CURVE {
 }
 
 export const EC_CURVE_TO_OID: Record<EC_CURVE, string> = {
+  [EC_CURVE.SM2]: "06082a811ccf5501822d",
   [EC_CURVE.brainpoolP160r1]: "06092b2403030208010101",
   [EC_CURVE.brainpoolP160t1]: "06092b2403030208010102",
   [EC_CURVE.brainpoolP192r1]: "06092b2403030208010103",
@@ -109,8 +110,10 @@ export const EC_CURVE_TO_OID: Record<EC_CURVE, string> = {
   [EC_CURVE.c2pnb163v1]: "06082a8648ce3d030001",
   [EC_CURVE.c2pnb163v2]: "06082a8648ce3d030002",
   [EC_CURVE.c2pnb163v3]: "06082a8648ce3d030003",
+  [EC_CURVE.c2pnb176v1]: "06082a8648ce3d030004",
   [EC_CURVE.c2pnb208w1]: "06082a8648ce3d03000a",
   [EC_CURVE.c2pnb272w1]: "06082a8648ce3d030010",
+  [EC_CURVE.c2pnb304w1]: "06082a8648ce3d030011",
   [EC_CURVE.c2pnb368w1]: "06082a8648ce3d030013",
   [EC_CURVE.c2tnb191v1]: "06082a8648ce3d030005",
   [EC_CURVE.c2tnb191v2]: "06082a8648ce3d030006",
@@ -158,20 +161,17 @@ export const EC_CURVE_TO_OID: Record<EC_CURVE, string> = {
   [EC_CURVE.sect409r1]: "06052b81040025",
   [EC_CURVE.sect571k1]: "06052b81040026",
   [EC_CURVE.sect571r1]: "06052b81040027",
-  [EC_CURVE.SM2]: "06082a811ccf5501822d",
   [EC_CURVE.wap_wsg_idm_ecid_wtls1]: "0605672b010401",
+  [EC_CURVE.wap_wsg_idm_ecid_wtls10]: "0605672b01040a",
+  [EC_CURVE.wap_wsg_idm_ecid_wtls11]: "0605672b01040b",
+  [EC_CURVE.wap_wsg_idm_ecid_wtls12]: "0605672b01040c",
   [EC_CURVE.wap_wsg_idm_ecid_wtls3]: "0605672b010403",
   [EC_CURVE.wap_wsg_idm_ecid_wtls4]: "0605672b010404",
   [EC_CURVE.wap_wsg_idm_ecid_wtls5]: "0605672b010405",
   [EC_CURVE.wap_wsg_idm_ecid_wtls6]: "0605672b010406",
   [EC_CURVE.wap_wsg_idm_ecid_wtls7]: "0605672b010407",
   [EC_CURVE.wap_wsg_idm_ecid_wtls8]: "0605672b010408",
-  [EC_CURVE.wap_wsg_idm_ecid_wtls9]: "0605672b010409",
-  [EC_CURVE.wap_wsg_idm_ecid_wtls10]: "0605672b01040a",
-  [EC_CURVE.wap_wsg_idm_ecid_wtls11]: "0605672b01040b",
-  [EC_CURVE.wap_wsg_idm_ecid_wtls12]: "0605672b01040c",
-  [EC_CURVE.c2pnb176v1]: "06082a8648ce3d030004",
-  [EC_CURVE.c2pnb304w1]: "06082a8648ce3d030011",
+  [EC_CURVE.wap_wsg_idm_ecid_wtls9]: "0605672b010409"
 }
 
 export const ED_CURVE_TO_DER_MARKER: Record<ED_CURVE, Record<Key, string>> = {
