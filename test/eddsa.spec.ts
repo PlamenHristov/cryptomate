@@ -1,5 +1,4 @@
-import Eddsa, {EdDSA} from "../src/eddsa"
-import {Curve, ED_CURVE, ED_CURVE_TO_DER_MARKER, Key} from "../src/constants"
+import {Curve, ED_CURVE, ED_CURVE_TO_DER_MARKER, EdDSA, Key} from "../src"
 
 describe("EdDSA", () => {
   let eddsa
@@ -21,7 +20,6 @@ describe("EdDSA", () => {
   })
 
   test("sign and verify messages with Ed25519 - Test 1", () => {
-
     const privKey = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
     const pubKey = "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
     const message = ""
@@ -65,7 +63,7 @@ describe("EdDSA", () => {
     expect(pemPrivateKey).toContain("BEGIN PRIVATE KEY")
     expect(pemPrivateKey).toContain("END PRIVATE KEY")
 
-    const importedKey = Eddsa.withCurve(Curve.ed25519).fromPEM(pemPrivateKey, Key.privateKey).privateKey
+    const importedKey = EdDSA.withCurve(Curve.ed25519).fromPEM(pemPrivateKey, Key.privateKey).privateKey
     expect(eddsa.privateKey).toEqual(importedKey)
   })
 
@@ -75,7 +73,7 @@ describe("EdDSA", () => {
     expect(pemPrivateKey).toContain("BEGIN PUBLIC KEY")
     expect(pemPrivateKey).toContain("END PUBLIC KEY")
 
-    const importedKey = Eddsa.withCurve(Curve.ed25519).fromPEM(pemPrivateKey, Key.publicKey).publicKey
+    const importedKey = EdDSA.withCurve(Curve.ed25519).fromPEM(pemPrivateKey, Key.publicKey).publicKey
     expect(eddsa.publicKey).toEqual(importedKey)
   })
 
@@ -86,7 +84,7 @@ describe("EdDSA", () => {
     expect(derPrivateKey).not.toContain("BEGIN PRIVATE KEY")
     expect(derPrivateKey).not.toContain("END PRIVATE KEY")
 
-    expect(eddsa.privateKey).toEqual(Eddsa.withCurve(Curve.ed25519).fromDER(derPrivateKey,Key.privateKey).privateKey)
+    expect(eddsa.privateKey).toEqual(EdDSA.withCurve(Curve.ed25519).fromDER(derPrivateKey, Key.privateKey).privateKey)
   })
   
   test("converts a public key from and to DER", () => {
@@ -95,7 +93,7 @@ describe("EdDSA", () => {
     expect(derPrivateKey).not.toContain("BEGIN PRIVATE KEY")
     expect(derPrivateKey).not.toContain("END PRIVATE KEY")
 
-    expect(eddsa.publicKey).toEqual(Eddsa.withCurve(Curve.ed25519).fromDER(derPrivateKey,Key.publicKey).publicKey)
+    expect(eddsa.publicKey).toEqual(EdDSA.withCurve(Curve.ed25519).fromDER(derPrivateKey,Key.publicKey).publicKey)
   })
   
   test("correctly sets prefix based on curve", () => {
