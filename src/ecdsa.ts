@@ -47,6 +47,22 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
     const privateKeyEnd = privateKeyLengthSizeIndexEnd + this._decodeOidLength(privateKeySize) * BYTE_LENGTH_IN_HEX
     return pkcs8Hex.substring(privateKeyLengthSizeIndexEnd, privateKeyEnd)
   }
+  public getPublicKeyCompressed(): string {
+    // remove the 04 prefix for uncompressed public key
+    const pk = this.publicKey.substring(2)
+    const x = pk.substring(0, pk.length / 2)
+    return `${this.isYEven() ? "02" : "03"}${x}`
+  }
+  private isYOdd(): boolean {
+    return !this.isYEven()
+  }
+  private isYEven(): boolean  {
+    // remove the 04 prefix for uncompressed public key
+    const pk = this.publicKey.substring(2)
+    const y = pk.substring(pk.length / 2)
+    const yLastDigit = parseInt(y[y.length - 1], 16)
+    return yLastDigit % 2 === 0
+  }
 
   public get publicKey(): string {
     const pkcs8Hex = this._export("der", Key.publicKey).toString("hex")
@@ -78,7 +94,7 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
   }
 
   private export<T extends KeyEncoding>(format: T, key: Key = Key.privateKey): EncodingResponse[T] {
-    // There is a bug in nodejs >16.x where importing the public key directly the DER encoding
+    // There is a bug in nodejs >16.x where exporting the public key directly into DER encoding
     // concatenates the OID twice instead of adding the public key prefix + oid.
     if (!this._privateKey) {
       if (format === "der")
@@ -166,8 +182,9 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
 
   keyFromPublic(publicKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): ECDSA {
     if (this._privateKey) throw new Error("Cannot import public key when private key is set")
-
-    const serializedKey = Buffer.isBuffer(publicKey) ? publicKey : Buffer.from(publicKey, enc)
+    // @ts-ignore
+    let uncompressed = this.ecdh.setPublicKey(publicKey, enc).getPublicKey('hex', 'uncompressed')
+    let serializedKey = Buffer.from(uncompressed, 'hex')
     this.import(this._encodePEM(this._encodeDER(serializedKey.toString("hex"), Key.publicKey), Key.publicKey), "pem", Key.publicKey)
     return this
   }
