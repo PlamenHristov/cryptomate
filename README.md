@@ -27,7 +27,7 @@ npm i --save cryptomate
 Here is an example demonstrating the use of the ECDSA functionality provided by this module:
 
 ```javascript
-const {ECDSA, EC_CURVE, Key, SignatureEncoding} = require('cryptomate');
+import {ECDSA, EC_CURVE, Key, SignatureEncoding} from 'cryptomate'
 
 // Generate an ECDSA key pair.
 const ecdsa = ECDSA.withCurve(EC_CURVE.secp256k1).genKeyPair();
@@ -48,6 +48,56 @@ let importedECDSA = ECDSA.withCurve(EC_CURVE.secp256k1).fromPEM(privateKeyPEM, K
 
 ```
 
+## Example integrations
+
+### Ethereum integration
+```javascript
+import {computeAddress} from "@ethersproject/transactions"
+import {Wallet} from "@ethersproject/wallet"
+import {parseEther, parseUnits} from "@ethersproject/units"
+import {getDefaultProvider} from "@ethersproject/providers"
+import {EC_CURVE, ECDSA} from "cryptomate"
+
+// Generate a new ECDSA key pair
+const keyPair = new ECDSA(EC_CURVE.secp256k1).genKeyPair()
+console.log("Public key:", keyPair.getPublicKeyCompressed())
+
+const address = computeAddress(Buffer.from(keyPair.getPublicKeyCompressed(),'hex'))
+console.log("Derived Ethereum Address:", address)
+
+// Get the private key in hex
+const privateKey = keyPair.privateKey
+
+// Instantiate a new Wallet instance
+const wallet = new Wallet(privateKey)
+
+// Define the transaction
+const provider = getDefaultProvider("sepolia") // Or any other network
+const transaction = {
+  type: 2, // EIP-1559 transaction type
+  nonce: (await provider.getTransactionCount(address)) + 1,
+  chainId: provider.network.chainId, // Or any other network
+  to: "0x32Be343B94f860124dC4fEe278FDCBD38C102D88", // Replace with the recipient address
+  value: parseEther("0.01"), // Ether to send
+  gasLimit: 21000, // vanilla transfer gasLimit
+  maxPriorityFeePerGas: parseUnits("1", 'gwei'), // Miner tip
+  maxFeePerGas: parseUnits("2", 'gwei'), // Adjust according to network requirements
+}
+
+// Sign the transaction
+const signedTransaction = await wallet.signTransaction(transaction)
+console.log("Signed Transaction:", signedTransaction)
+
+const tx = await provider.sendTransaction(signedTransaction)
+console.log("Transaction Hash:", tx.hash)
+```
+
+### Solana integration
+```javascript
+import {Account, Connection, PublicKey, Transaction, TransactionInstruction} from "@solana/web3.js"
+import {EC_CURVE, ECDSA} from "cryptomate"
+
+```
 ## API Reference
 
 ### ECDSA

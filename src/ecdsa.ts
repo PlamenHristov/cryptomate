@@ -182,9 +182,10 @@ export class ECDSA implements ISigner, IKey<ECDSA> {
 
   keyFromPublic(publicKey: string | Buffer, enc: crypto.BinaryToTextEncoding = "hex"): ECDSA {
     if (this._privateKey) throw new Error("Cannot import public key when private key is set")
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    let uncompressed = this.ecdh.setPublicKey(publicKey, enc).getPublicKey('hex', 'uncompressed')
-    let serializedKey = Buffer.from(uncompressed, 'hex')
+    const uncompressed = this.ecdh.setPublicKey(publicKey, enc).getPublicKey("hex", "uncompressed")
+    const serializedKey = Buffer.from(uncompressed, "hex")
     this.import(this._encodePEM(this._encodeDER(serializedKey.toString("hex"), Key.publicKey), Key.publicKey), "pem", Key.publicKey)
     return this
   }

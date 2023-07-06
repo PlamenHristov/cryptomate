@@ -1,3 +1,12 @@
 .git
 .idea
+.github
 .gitignore
+examples
+configs
+node_modules
+test
+ins
+*.pem
+*.der
+*.sh
